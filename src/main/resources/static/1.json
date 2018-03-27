@@ -1,0 +1,4 @@
+[{ id:'01',	name:'n1',	isParent:true},
+{ id:'02',	name:'n2',	isParent:false},
+{ id:'03',	name:'n3',	isParent:true},
+{ id:'04',	name:'n4',	isParent:false}]

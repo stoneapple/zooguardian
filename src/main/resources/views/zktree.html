@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+	<meta charset="UTF-8"/>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<title>Zookeeper管理工具</title>
+	<link rel="stylesheet" type="text/css" th:href="@{/css/bootstrap.min.css}"/>
+	<link rel="stylesheet" th:href="@{/css/zTreeStyle.css}" type="text/css"/>
+	<style>
+		body{
+		  margin: 0;
+		  padding:0px 15px;
+		}
+		#envinfo{padding:5pxpx;border-bottom:1px solid lightgray;}
+ 		#envinfo >ul{list-style:none;} 
+ 		.env-li{float:left;margin:0 8px;} 
+ 		.env-li .itemvalue{color:#d06464;} 
+ 		.username{line-height: 2.4;}
+ 		.ztree li.tohigh{width: 100%;word-wrap: break-word;white-space: pre-wrap; word-break: break-all;height: 66px;}
+		.ztree li a{display:contents;}
+		.opbtns{margin-top: 20px;margin-bottom: 10px;}
+	</style>
+</head>
+<body>
+	<div id="envinfo">
+		<div class="titles">
+			<div class="row">
+				<div class="h3 col-sm-5">环境信息：</div>
+				<div th:class="${session.usersession==null}?'hidden':'opbtns pull-right  col-sm-3'">
+					  <div class="btn-group" role="group">
+					    <button type="button" class="btn btn-warning" id="delete">删除</button>
+					  </div>
+					  <div class="btn-group" role="group">
+					    <button type="button" class="btn btn-danger col-sm-push-2" id="deepdelete">级联删除</button>
+					  </div>
+				</div>
+			</div>
+			<div th:class="${session.usersession==null}?'btn btn-success pull-right':'hidden'" data-toggle="modal" id="loginbtn" data-target="#loginwindows" style="position:relative;top:-10px;">登录</div>
+			<div th:class="${session.usersession==null}?'hidden':'userinfo middle pull-right col-sm-3'">
+				<div class="col-sm-6 username">用户：<span id="account" th:text="${session.usersession}"></span></div>
+				<div class="btn btn-sm btn-default col-sm-3" onclick="logout()">退出</div>
+			</div>
+		</div>		
+		<ul>
+			<li class="env-li">
+				<span class="itemname">ZK地址:</span>
+				<span class="itemvalue" th:text="${zkaddr}"></span>
+			</li>
+			<li class="env-li">
+				<span class="itemname">角色:</span>
+				<span class="itemvalue" th:text="${mntr.role}"></span>
+			</li>
+			<li class="env-li">
+				<span class="itemname">节点总数:</span>
+				<span class="itemvalue" th:text="${mntr.zknodes}"></span>
+			</li>
+			<li class="env-li">
+				<span class="itemname">临时节点:</span>
+				<span class="itemvalue" th:text="${mntr.empernal}"></span>
+			</li>
+			<li class="env-li">
+				<span class="itemname">连接数:</span>
+				<span class="itemvalue" th:text="${mntr.connections}"></span>
+			</li>
+			<li class="env-li">
+				<span class="itemname">watch数:</span>
+				<span class="itemvalue" th:text="${mntr.watches}"></span>
+			</li>
+			<div style="clear:both;"></div><!--添加一个空div，用clear:both清除浮动造成的影响--> 
+		</ul>
+  	</div>
+  	<div id="tree">
+  		<div class="col-sm-7">
+	         <h4 class="lighter smaller">ZK数据内容<span class="h6">(点击节点即可复制名称)</span></h4>
+	         <div id="treeDemo" class="ztree"></div>
+	    </div>
+	    <div class="col-sm-4">
+		   <h4 class="lighter smaller">节点属性</h4>
+           <div class="form-horizontal col-sm-12 text-left">
+			  <div class="form-group">
+			    <label class="col-sm-3 control-label">名称</label>
+			    <div class="col-sm-8">
+			    	<input type="text" class="form-control" id="nodename"/>
+			    </div>
+			  </div>
+			  <div class="form-group">
+			    <label class="col-sm-3 control-label">路径</label>
+			    <div class="col-sm-8">
+			    	<input type="text" class="form-control" id="nodepath"/>
+			    </div>
+			  </div>
+			  <div class="form-group">
+			    <label class="col-sm-3 control-label">类型</label>
+			    <div class="col-sm-8">
+			    	<input type="text" class="form-control" id="nodetype"/>
+			    </div>
+			  </div>
+			  <div class="form-group">
+			    <label class="col-sm-3 control-label">子节点</label>
+			    <div class="col-sm-8">
+			    	<input type="text" class="form-control" id="childnum"/>
+			    </div>
+			  </div>
+			  <div class="form-group">
+			    <label class="col-sm-3 control-label">数据</label>
+			    <div class="col-sm-8">
+			    	<textarea class="form-control" id="nodedata" rows="10"></textarea>
+			    </div>
+			  </div>
+			</div>
+        </div>
+  	</div>
+  	<input id="copyinput" value="https://github.com/zenorocha/clipboard.js.git" type="text" style="position:fixed;top:-10000px;"/>
+  	
+	<form method="get" action="/logout"  id="logoutform">
+		<input type="hidden" name="zkaddr" th:value="${zkaddr}"/>
+	</form>
+	
+	
+	<!-- 登录窗口 -->
+     <div id="loginwindows" class="modal fade">
+         <div class="modal-dialog modal-sm">
+             <div class="modal-content">
+                 <div class="modal-body">
+                     <button class="close" data-dismiss="modal">
+                         <span>&times;</span>
+                     </button>
+                 </div>
+                 <div class="modal-title">
+                     <h1 class="text-center">登录</h1>
+                 </div>
+                 <div class="modal-body">
+                     <form id="loginform" class="form-group" th:action="@{/login}" th:method="post" onsubmit="return false;">
+                             <div class="form-group">
+                                 <label for="">用户名</label>
+                                 <input class="form-control" type="text" name="account"/>
+                             </div>
+                             <div class="form-group">
+                                 <label for="">密码</label>
+                                 <input class="form-control" type="password" name="password"/>
+                             </div>
+                             <input class="form-control" type="hidden" name="zkaddr" th:value="${zkaddr}"/>
+                             <div class="text-right">
+                                 <button class="btn btn-primary" type="submit" onclick="login()">登录</button>
+                                 <button class="btn btn-danger" data-dismiss="modal">取消</button>
+                             </div>
+                             <p class="text-danger hidden" id="errormsg">用户名或者密码错误</p>
+                     </form>
+                 </div>
+             </div>
+         </div>
+     </div>
+     <!-- END 登录窗口 -->
+	
+	<script th:src="@{/js/jquery.min.js}"></script>
+	<script type="text/javascript" th:src="@{/js/jquery.ztree.core.js}"></script>
+	<script type="text/javascript" th:src="@{/js/bootstrap.min.js}"></script>
+	<script type="text/javascript" th:src="@{/js/clipboard.js}"></script>
+	<script type="text/javascript" th:inline="javascript">	
+		//<![CDATA[
+		var treeObj;
+		var selectedPath;
+		var basePath = /*[[${#httpServletRequest.getScheme() + "://" + #httpServletRequest.getServerName() + ":" + #httpServletRequest.getServerPort() + #httpServletRequest.getContextPath()}]]*/;  
+		var setting = {
+			callback: {
+				onClick:zTreeOnClick,
+				onExpand:ztExpand
+			},
+			async: {
+				enable: true,
+				url:basePath+"/zookeeper/getchildren",
+				type:"get",
+				autoParam:["id", "name=n", "level=lv","path=path"],
+				otherParam:{"zkaddr":[[${zkaddr}]]},
+				dataFilter: filter
+			}
+		};
+		function ztExpand(eventId,treeId, treeNode){
+			setTimeout(function(){
+				var children = treeNode.children;
+				for (var i=0;i<children.length; i++) {
+					if(children[i].name.length>100){
+						//需要设置高度了
+						$("#"+children[i].tId).addClass("tohigh");
+					}
+			}},10);
+		}
+		function logout(){
+			$("#logoutform").submit();
+		}
+		function zTreeOnClick(event, treeId, treeNode) {
+			selectedPath = treeNode.path;
+			$("#nodename").val(treeNode.name);
+			$("#nodepath").val(treeNode.path);
+			$("#nodedata").val("");
+			$("#"+treeNode.tId).attr("data-clipboard-demo","");
+			$("#"+treeNode.tId).attr("data-clipboard-target","#copyinput");
+			$("#copyinput").val(treeNode.name);
+			new ClipboardJS('[data-clipboard-demo]');
+			$.ajax({
+				url:basePath+"/zookeeper/getnodeinfo?zkaddr=" + [[${zkaddr}]] +"&path="+encodeURIComponent(treeNode.path),
+				type:"get",
+				success:function(ret){
+					$("#nodedata").val(ret.data);
+					$("#childnum").val(ret.childNum);
+					if(ret.isEphemeral){
+						$("#nodetype").val("临时节点");
+					}else{
+						$("#nodetype").val("永久节点");
+					}
+					if(ret.childNum==0){
+						var treeObj = $.fn.zTree.getZTreeObj("treeDemo");
+						treeNode.iconSkin="icon04_ico_docu";
+						treeObj.updateNode(treeNode);
+						$("#"+treeNode.tId+"_switch").remove();
+					}
+				}
+			});
+		};
+		
+		function filter(treeId, parentNode, childNodes) {
+			if (!childNodes) return null;
+			for (var i=0, l=childNodes.length; i<l; i++) {
+				childNodes[i].name = childNodes[i].name.replace(/\.n/g, '.');
+				
+			}
+			return childNodes;
+		}
+		
+		function successLogin(data){
+			if(data.success){
+				window.location.href=basePath+"/zookeeper/tree?zkaddr="+encodeURIComponent([[${zkaddr}]]);
+			}else{
+				$("#errormsg").removeClass("hidden");
+			}
+			
+		}
+		
+		function login(){
+			$.ajax({
+                cache: true,  
+                type: "post",  
+                url:basePath+"/login",  
+                data:$('#loginform').serialize(),// 你的formid  
+                async: false,  
+                error: function(request) {  
+                    alert("Connection error:"+request.error);  
+                },
+                success: function(data) {
+                	//判断是否登录成功！ 成功则进入会员页面，否则提示登录失败
+                    successLogin(data);
+                }
+            });
+		}
+		
+		function deleteNode(deleteType){
+			if(!selectedPath){
+				alert("请先选择要删除的节点");
+				return false;
+			}
+			var statu = confirm("确认要删除当前选择的节点么？数据是无价的哦！！！！");
+			if(!statu){
+			   return false;
+			}
+			$.ajax({
+				url:basePath+"/zkoperation/"+deleteType,
+				data:{"zkaddr":[[${zkaddr}]],"path":selectedPath},
+				type:'post',
+				success:function(ret){
+					alert(ret)
+					window.location.href=basePath+"/zookeeper/tree?zkaddr="+encodeURIComponent([[${zkaddr}]]);
+				}
+			});
+		}
+		
+		
+		$(document).ready(function(){
+			treeObj = $.fn.zTree.init($("#treeDemo"), setting);
+			
+			$("#delete").click(function(){
+				deleteNode("delete");
+			})
+			
+			$("#deepdelete").click(function(){
+				deleteNode("deepdelete");
+			})
+		});
+		//]]>
+	</script>
+</body>
+</html>
